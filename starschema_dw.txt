@@ -1,0 +1,97 @@
+-------------------------------------------------------------------
+-- 0. Create Schema
+-------------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS dwh;
+
+-------------------------------------------------------------------
+-- 1. Dimension: Manufacturer
+-------------------------------------------------------------------
+CREATE TABLE dwh.dim_manufacturer (
+    MANUFACTURER_ID   VARCHAR(256) PRIMARY KEY,
+    MAKER_NAME        VARCHAR(256) NOT NULL
+);
+
+-------------------------------------------------------------------
+-- 2. Dimension: Vehicle
+-------------------------------------------------------------------
+CREATE TABLE dwh.dim_vehicle (
+    VEHICLE_ID        VARCHAR(256) PRIMARY KEY,
+    MODEL_NAME        VARCHAR(256) NOT NULL,
+    VARIANT           VARCHAR(256),
+    EMISSION_STANDARD VARCHAR(100),
+    FUEL              VARCHAR(50),
+    COLOUR            VARCHAR(50),
+    VEHICLE_CLASS     VARCHAR(100),
+    MAKE_YEAR         VARCHAR(10),
+    SEAT_CAPACITY     INT,
+    IS_ELECTRIC       BOOLEAN
+);
+
+-------------------------------------------------------------------
+-- 3. Dimension: RTA / Office
+-------------------------------------------------------------------
+CREATE TABLE dwh.dim_rta (
+    RTA_ID            VARCHAR(256) PRIMARY KEY,
+    RTA_OFFICE_CODE   VARCHAR(50),
+    RTA_REGION        VARCHAR(100),
+    RTA_STATE         VARCHAR(100),
+    RTA_CITY          VARCHAR(100)
+);
+
+-------------------------------------------------------------------
+-- 4. Dimension: Date (simplified)
+-------------------------------------------------------------------
+CREATE TABLE dwh.dim_date (
+    DATE_ID      INT PRIMARY KEY,       -- YYYYMMDD
+    FULL_DATE    DATE,
+    YEAR         INT,
+    MONTH        INT,
+    DAY          INT
+);
+
+-------------------------------------------------------------------
+-- 5. Fact: Vehicle Registrations
+-------------------------------------------------------------------
+CREATE TABLE dwh.fact_registrations (
+    FACT_ID                     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    -- Foreign Keys
+    VEHICLE_ID                  VARCHAR(256) NOT NULL REFERENCES dwh.dim_vehicle(VEHICLE_ID),
+    MANUFACTURER_ID             VARCHAR(256) NOT NULL REFERENCES dwh.dim_manufacturer(MANUFACTURER_ID),
+    RTA_ID                      VARCHAR(256) NOT NULL REFERENCES dwh.dim_rta(RTA_ID),
+
+    -- Date Keys
+    REGISTRATION_ISSUE_DATE_ID  INT NOT NULL REFERENCES dwh.dim_date(DATE_ID),
+    REGISTRATION_EXPIRY_DATE_ID INT REFERENCES dwh.dim_date(DATE_ID),
+    MANUFACTURER_DATE_ID        INT REFERENCES dwh.dim_date(DATE_ID),
+
+    -- Descriptive Attributes
+    TRANSPORT_TYPE              VARCHAR(100),
+    TEMP_REGISTRATION_NUMBER    VARCHAR(100),
+    SLNO                        VARCHAR(50),
+    IS_FUZZY_MATCH              BOOLEAN,
+    COLOUR                       VARCHAR(100),
+    FUEL_TYPE                    VARCHAR(50),
+    MODEL_NAME                   VARCHAR(200),
+    REGISTRATION_YEAR            INT
+);
+
+-------------------------------------------------------------------
+-- 6. Populate dim_date
+-------------------------------------------------------------------
+-- Generic SQL: fills dim_date for all days from 2010-01-01 to today
+INSERT INTO dwh.dim_date (DATE_ID, FULL_DATE, YEAR, MONTH, DAY)
+WITH RECURSIVE dates AS (
+    SELECT CAST('2010-01-01' AS DATE) AS dt
+    UNION ALL
+    SELECT dt + INTERVAL '1' DAY
+    FROM dates
+    WHERE dt + INTERVAL '1' DAY <= CURRENT_DATE
+)
+SELECT
+    CAST(TO_CHAR(dt, 'YYYYMMDD') AS INT) AS DATE_ID,
+    dt AS FULL_DATE,
+    EXTRACT(YEAR FROM dt) AS YEAR,
+    EXTRACT(MONTH FROM dt) AS MONTH,
+    EXTRACT(DAY FROM dt) AS DAY
+FROM dates;
