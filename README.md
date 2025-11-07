@@ -39,8 +39,3 @@ Raw CSVs in S3
              - Creates fact_registrations table
              - Dynamically coalesces files for Redshift efficiency
              - Outputs to: s3://.../gold_dim_* and /gold_fact_registrations/
-
-
-
-
-https://1drv.ms/o/c/3c79e3f6b54d5c8d/EqmVNdyGoatGtY3hdUvfRfEBDWeAcloggwinpvEdz25G0Q?e=dDJQ2E
